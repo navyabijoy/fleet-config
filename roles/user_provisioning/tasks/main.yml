@@ -1,0 +1,96 @@
+# User onboarding and offboarding based on vars/users.yml.
+
+- name: Load user definitions
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vars/users.yml"
+  tags: [users]
+
+# Manage user accounts
+
+- name: Manage user accounts
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    comment: "{{ item.comment | default('') }}"
+    shell: "{{ user_shell }}"
+    create_home: "{{ item.state == 'present' }}"
+    remove: "{{ item.state == 'absent' }}"  # Remove home dir on deprovision
+  loop: "{{ users }}"
+  loop_control:
+    label: "{{ item.name }} ({{ item.state }})"
+  tags: [users]
+
+# SSH key management
+
+- name: Deploy SSH authorized keys (present users)
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_public_key }}"
+    state: present
+    exclusive: false  # Don't wipe other keys (e.g. EC2 key pair)
+  loop: "{{ users | selectattr('state', 'equalto', 'present') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  tags: [users, keys]
+
+- name: Revoke SSH authorized keys (absent users)
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_public_key }}"
+    state: absent
+  loop: "{{ users | selectattr('state', 'equalto', 'absent') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  # Ignore errors if user account was already removed (home dir gone)
+  ignore_errors: true
+  tags: [users, keys]
+
+# Sudo access management
+
+- name: Ensure sudoers drop-in file exists
+  ansible.builtin.file:
+    path: "{{ sudoers_dropin_file }}"
+    state: touch
+    owner: root
+    group: root
+    mode: "0440"
+    modification_time: preserve
+    access_time: preserve
+  tags: [users, sudo]
+
+- name: Grant sudo access (present users with sudo: true)
+  ansible.builtin.lineinfile:
+    path: "{{ sudoers_dropin_file }}"
+    regexp: "^{{ item.name }}"
+    line: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL"
+    state: present
+    validate: "visudo -cf %s"
+  loop: "{{ users | selectattr('state', 'equalto', 'present') | selectattr('sudo', 'equalto', true) | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  tags: [users, sudo]
+
+- name: Revoke sudo access (absent users or sudo: false)
+  ansible.builtin.lineinfile:
+    path: "{{ sudoers_dropin_file }}"
+    regexp: "^{{ item.name }}"
+    state: absent
+    validate: "visudo -cf %s"
+  loop: >-
+    {{
+      (users | selectattr('state', 'equalto', 'absent') | list) +
+      (users | selectattr('state', 'equalto', 'present') | rejectattr('sudo', 'equalto', true) | list)
+    }}
+  loop_control:
+    label: "{{ item.name }}"
+  tags: [users, sudo]
+
+# Audit summary
+
+- name: Report provisioning summary
+  ansible.builtin.debug:
+    msg: >-
+      User provisioning complete.
+      Present: {{ users | selectattr('state', 'equalto', 'present') | map(attribute='name') | list | join(', ') }}.
+      Absent (offboarded): {{ users | selectattr('state', 'equalto', 'absent') | map(attribute='name') | list | join(', ') }}.
+  tags: [users]

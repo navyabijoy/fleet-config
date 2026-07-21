@@ -1,0 +1,4 @@
+ansible==10.7.0
+ansible-lint==25.5.0
+yamllint==1.37.1
+boto3==1.38.45

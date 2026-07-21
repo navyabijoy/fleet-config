@@ -1,0 +1,13 @@
+profile: production
+
+exclude_paths:
+  - tests/idempotency_results/
+  - awx/
+
+warn_list:
+  - yaml[line-length]
+  - experimental
+
+skip_list: []
+
+use_default_rules: true

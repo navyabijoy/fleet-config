@@ -1,0 +1,13 @@
+.DS_Store
+*.pem
+*.key
+*.retry
+/tmp/
+.ansible/
+__pycache__/
+*.pyc
+.env
+awx/.env
+!awx/.env.example
+tests/idempotency_results/*.log
+!tests/idempotency_results/README.md

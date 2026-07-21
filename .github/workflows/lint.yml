@@ -1,6 +1,6 @@
 name: Playbook Lint & Syntax Check
 
-on:
+"on":
   push:
     branches: [main]
   pull_request:

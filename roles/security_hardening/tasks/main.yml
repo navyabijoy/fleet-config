@@ -1,4 +1,3 @@
-
 # SSH Hardening (CIS 5.2.x)
 
 - name: "CIS 5.2.4 | Disable root SSH login"

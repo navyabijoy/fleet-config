@@ -58,7 +58,7 @@
     access_time: preserve
   tags: [users, sudo]
 
-- name: Grant sudo access (present users with sudo: true)
+- name: "Grant sudo access (present users with sudo: true)"
   ansible.builtin.lineinfile:
     path: "{{ sudoers_dropin_file }}"
     regexp: "^{{ item.name }}"
@@ -70,7 +70,7 @@
     label: "{{ item.name }}"
   tags: [users, sudo]
 
-- name: Revoke sudo access (absent users or sudo: false)
+- name: "Revoke sudo access (absent users or sudo: false)"
   ansible.builtin.lineinfile:
     path: "{{ sudoers_dropin_file }}"
     regexp: "^{{ item.name }}"

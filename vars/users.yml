@@ -1,0 +1,22 @@
+# Fleet user definitions — the single source of truth for SSH access across all hosts.
+# To offboard a user: change state to 'absent'. The playbook handles key revocation
+# and sudo removal. Do NOT delete entries — absent state is the audit trail.
+
+users:
+  - name: alice
+    state: present
+    comment: "Alice — Platform SRE"
+    sudo: true
+    ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPlaceholderKeyAlice alice@company.com"
+
+  - name: bob
+    state: present
+    comment: "Bob — Backend Engineer (read access)"
+    sudo: false
+    ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPlaceholderKeyBob bob@company.com"
+
+  - name: charlie
+    state: absent
+    comment: "Charlie — Offboarded 2024-11-01"
+    sudo: false
+    ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPlaceholderKeyCharlie charlie@company.com"

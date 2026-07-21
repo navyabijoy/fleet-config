@@ -1,0 +1,28 @@
+# Source of truth for config drift detection.
+# The config_drift role compares live host state against these values.
+
+sshd_config:
+  PermitRootLogin: "no"
+  PasswordAuthentication: "no"
+  MaxAuthTries: "3"
+  X11Forwarding: "no"
+  AllowAgentForwarding: "no"
+  Protocol: "2"
+  LogLevel: "VERBOSE"
+  ClientAliveInterval: "300"
+  ClientAliveCountMax: "0"
+
+# Expected entries in /etc/sudoers.d/fleet-managed
+# Each entry: { user_or_group, privilege }
+sudoers_entries:
+  - user: "%sudo"
+    privilege: "ALL=(ALL:ALL) ALL"
+  - user: "ansible_svc"
+    privilege: "ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/yum"
+
+# Cron jobs managed by this team — unexpected entries trigger drift alert
+expected_cron_jobs:
+  - name: ansible-drift-check
+    user: root
+    schedule: "0 3 * * 0"
+    command: "/usr/local/bin/ansible-pull --url https://github.com/navyabijoy/fleet-config.git playbooks/config_drift.yml"

@@ -31,11 +31,20 @@ jobs:
         run: yamllint .
 
       - name: Run ansible-lint
-        run: ansible-lint playbooks/
+        run: |
+          if [ -d playbooks ] && [ "$(ls playbooks/*.yml 2>/dev/null)" ]; then
+            ansible-lint playbooks/
+          else
+            echo "No playbooks found — skipping ansible-lint."
+          fi
 
       - name: Syntax check — all playbooks
         run: |
-          for pb in playbooks/*.yml; do
-            echo "==> Syntax check: $pb"
-            ansible-playbook --syntax-check "$pb" -i tests/stub_inventory
-          done
+          if compgen -G "playbooks/*.yml" > /dev/null 2>&1; then
+            for pb in playbooks/*.yml; do
+              echo "==> Syntax check: $pb"
+              ansible-playbook --syntax-check "$pb" -i tests/stub_inventory
+            done
+          else
+            echo "No playbooks found — skipping syntax check."
+          fi

@@ -43,11 +43,11 @@
   tags: [patch]
 
 - name: Apply all updates (RHEL/Amazon Linux)
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: "*"
-    state: latest  # noqa package-latest — intentional for patch management
+    state: latest # noqa package-latest — intentional for patch management
     update_cache: true
-  register: yum_result
+  register: dnf_result
   when: ansible_os_family == "RedHat"
   tags: [patch]
 
@@ -58,12 +58,12 @@
     patch_changed: >-
       {{
         (apt_result.changed | default(false)) or
-        (yum_result.changed | default(false))
+        (dnf_result.changed | default(false))
       }}
     patch_summary: >-
       {{
         apt_result.stdout_lines[-3:] | default([]) if ansible_os_family == 'Debian'
-        else yum_result.results | default([]) | join(', ')
+        else dnf_result.results | default([]) | join(', ')
       }}
   tags: [patch]
 

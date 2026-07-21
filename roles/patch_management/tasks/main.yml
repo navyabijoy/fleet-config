@@ -1,0 +1,121 @@
+# Pre-checks
+
+- name: Capture current UTC hour for business-hours gate
+  ansible.builtin.command: date -u +%H
+  register: current_utc_hour
+  changed_when: false
+  tags: [check, patch]
+
+- name: Set business_hours fact
+  ansible.builtin.set_fact:
+    in_business_hours: >-
+      {{
+        (current_utc_hour.stdout | int) >= patch_business_hours_start and
+        (current_utc_hour.stdout | int) < patch_business_hours_end
+      }}
+  tags: [check, patch, reboot]
+
+- name: Report business-hours status
+  ansible.builtin.debug:
+    msg: >-
+      UTC hour={{ current_utc_hour.stdout }}.
+      Business hours={{ in_business_hours }}.
+      Reboots will be {{ 'SKIPPED' if (in_business_hours and not skip_reboot) else 'ALLOWED' }}.
+  tags: [check]
+
+# Package updates
+
+- name: Update apt cache (Debian/Ubuntu)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags: [patch]
+
+- name: Apply all security and regular updates (Debian/Ubuntu)
+  ansible.builtin.apt:
+    upgrade: dist
+    autoremove: "{{ patch_autoremove }}"
+    autoclean: true
+  register: apt_result
+  when: ansible_os_family == "Debian"
+  tags: [patch]
+
+- name: Apply all updates (RHEL/Amazon Linux)
+  ansible.builtin.yum:
+    name: "*"
+    state: latest  # noqa package-latest — intentional for patch management
+    update_cache: true
+  register: yum_result
+  when: ansible_os_family == "RedHat"
+  tags: [patch]
+
+# Post-patch logging
+
+- name: Collect patch result for logging
+  ansible.builtin.set_fact:
+    patch_changed: >-
+      {{
+        (apt_result.changed | default(false)) or
+        (yum_result.changed | default(false))
+      }}
+    patch_summary: >-
+      {{
+        apt_result.stdout_lines[-3:] | default([]) if ansible_os_family == 'Debian'
+        else yum_result.results | default([]) | join(', ')
+      }}
+  tags: [patch]
+
+- name: Write patch log entry
+  ansible.builtin.lineinfile:
+    path: "{{ patch_log_file }}"
+    line: >-
+      {{ ansible_date_time.iso8601 }}
+      host={{ inventory_hostname }}
+      cve_ref={{ cve_id | default('none') }}
+      changed={{ patch_changed }}
+      os_family={{ ansible_os_family }}
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [patch]
+
+# Reboot handling
+
+- name: Check if reboot is required (Debian/Ubuntu)
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: reboot_required_file
+  when: ansible_os_family == "Debian"
+  tags: [reboot]
+
+- name: Report reboot requirement
+  ansible.builtin.debug:
+    msg: >-
+      Reboot required={{ reboot_required_file.stat.exists | default(false) }}.
+      Will reboot={{ (reboot_required_file.stat.exists | default(false)) and
+                     (not in_business_hours or skip_reboot) }}.
+  tags: [reboot]
+
+- name: Reboot host if required and outside business hours
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    msg: "Ansible patch management reboot — CVE ref: {{ cve_id | default('scheduled') }}"
+  when:
+    - reboot_required_file.stat.exists | default(false)
+    - not in_business_hours or skip_reboot
+  tags: [reboot]
+
+- name: Warn that reboot is deferred (business hours active)
+  ansible.builtin.debug:
+    msg: >-
+      DEFERRED: Reboot required on {{ inventory_hostname }} but current
+      UTC hour {{ current_utc_hour.stdout }} is within business hours
+      ({{ patch_business_hours_start }}–{{ patch_business_hours_end }}).
+      Set skip_reboot=true to override.
+  when:
+    - reboot_required_file.stat.exists | default(false)
+    - in_business_hours
+    - not skip_reboot
+  tags: [reboot]

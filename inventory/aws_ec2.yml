@@ -1,0 +1,2 @@
+plugin: script
+script: inventory/aws_ec2.py

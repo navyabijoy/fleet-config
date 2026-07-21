@@ -1,0 +1,131 @@
+
+# SSH Hardening (CIS 5.2.x)
+
+- name: "CIS 5.2.4 | Disable root SSH login"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PermitRootLogin"
+    line: "PermitRootLogin no"
+    state: present
+    validate: "sshd -t -f %s"
+    backup: true
+  notify: Restart sshd
+  tags: [hardening, ssh]
+
+- name: "CIS 5.2.7 | Disable password authentication (key-based auth only)"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication no"
+    state: present
+    validate: "sshd -t -f %s"
+  notify: Restart sshd
+  tags: [hardening, ssh]
+
+- name: "CIS 5.2.8 | Limit max authentication attempts"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?MaxAuthTries"
+    line: "MaxAuthTries {{ ssh_max_auth_tries }}"
+    state: present
+    validate: "sshd -t -f %s"
+  notify: Restart sshd
+  tags: [hardening, ssh]
+
+- name: "CIS 5.2.9 | Disable X11 forwarding"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?X11Forwarding"
+    line: "X11Forwarding no"
+    state: present
+    validate: "sshd -t -f %s"
+  notify: Restart sshd
+  tags: [hardening, ssh]
+
+- name: "CIS 5.2.12 | Set SSH idle timeout"
+  ansible.builtin.blockinfile:
+    path: /etc/ssh/sshd_config
+    marker: "# {mark} ANSIBLE MANAGED — idle timeout"
+    block: |
+      ClientAliveInterval {{ ssh_client_alive_interval }}
+      ClientAliveCountMax {{ ssh_client_alive_count_max }}
+    validate: "sshd -t -f %s"
+  notify: Restart sshd
+  tags: [hardening, ssh]
+
+# fail2ban
+
+- name: Install fail2ban
+  ansible.builtin.apt:
+    name: fail2ban
+    state: present
+    update_cache: true
+  tags: [hardening, fail2ban]
+
+- name: Deploy fail2ban SSH jail configuration
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      # Managed by Ansible fleet-config — role: security_hardening
+      [DEFAULT]
+      bantime  = {{ fail2ban_ssh_bantime }}
+      findtime = {{ fail2ban_ssh_findtime }}
+      maxretry = {{ fail2ban_ssh_maxretry }}
+
+      [sshd]
+      enabled  = true
+      port     = {{ ssh_port }}
+      logpath  = %(sshd_log)s
+      backend  = %(sshd_backend)s
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+  tags: [hardening, fail2ban]
+
+- name: Ensure fail2ban is enabled and running
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  tags: [hardening, fail2ban]
+
+# UFW Firewall
+
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  when: enable_ufw
+  tags: [hardening, firewall]
+
+- name: Set UFW default inbound policy to deny
+  community.general.ufw:
+    default: deny
+    direction: incoming
+  when: enable_ufw
+  notify: Reload ufw
+  tags: [hardening, firewall]
+
+- name: Set UFW default outbound policy to allow
+  community.general.ufw:
+    default: allow
+    direction: outgoing
+  when: enable_ufw
+  tags: [hardening, firewall]
+
+- name: Allow permitted inbound ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item | string }}"
+    proto: tcp
+  loop: "{{ allowed_ports }}"
+  when: enable_ufw
+  notify: Reload ufw
+  tags: [hardening, firewall]
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+  when: enable_ufw
+  tags: [hardening, firewall]

@@ -1,0 +1,16 @@
+- name: Restart sshd
+  ansible.builtin.service:
+    name: sshd
+    state: restarted
+  listen: Restart sshd
+
+- name: Restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+  listen: Restart fail2ban
+
+- name: Reload ufw
+  community.general.ufw:
+    state: reloaded
+  listen: Reload ufw

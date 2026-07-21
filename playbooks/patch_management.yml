@@ -1,3 +1,4 @@
+---
 # Applies OS package updates across the fleet.
 
 - name: Fleet patch management

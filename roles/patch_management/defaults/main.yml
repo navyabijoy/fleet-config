@@ -1,11 +1,12 @@
+---
 # All vars can be overridden at playbook or AWX extra-vars level.
 
 # Business-hours window: reboots are blocked in this range (24h, UTC)
-patch_business_hours_start: 8    # 08:00 UTC
-patch_business_hours_end: 18     # 18:00 UTC
+patch_management_business_hours_start: 8 # 08:00 UTC
+patch_management_business_hours_end: 18 # 18:00 UTC
 
 # Log file on managed hosts
-patch_log_file: /var/log/ansible_patch.log
+patch_management_log_file: /var/log/ansible_patch.log
 
 # Whether to autoremove unused packages after upgrade
-patch_autoremove: true
+patch_management_autoremove: true

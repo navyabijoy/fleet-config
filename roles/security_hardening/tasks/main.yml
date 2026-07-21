@@ -1,3 +1,4 @@
+---
 # SSH Hardening (CIS 5.2.x)
 
 - name: "CIS 5.2.4 | Disable root SSH login"
@@ -25,7 +26,7 @@
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: "^#?MaxAuthTries"
-    line: "MaxAuthTries {{ ssh_max_auth_tries }}"
+    line: "MaxAuthTries {{ security_hardening_ssh_max_auth_tries }}"
     state: present
     validate: "sshd -t -f %s"
   notify: Restart sshd
@@ -46,8 +47,8 @@
     path: /etc/ssh/sshd_config
     marker: "# {mark} ANSIBLE MANAGED — idle timeout"
     block: |
-      ClientAliveInterval {{ ssh_client_alive_interval }}
-      ClientAliveCountMax {{ ssh_client_alive_count_max }}
+      ClientAliveInterval {{ security_hardening_ssh_client_alive_interval }}
+      ClientAliveCountMax {{ security_hardening_ssh_client_alive_count_max }}
     validate: "sshd -t -f %s"
   notify: Restart sshd
   tags: [hardening, ssh]
@@ -67,13 +68,13 @@
     content: |
       # Managed by Ansible fleet-config — role: security_hardening
       [DEFAULT]
-      bantime  = {{ fail2ban_ssh_bantime }}
-      findtime = {{ fail2ban_ssh_findtime }}
-      maxretry = {{ fail2ban_ssh_maxretry }}
+      bantime  = {{ security_hardening_fail2ban_bantime }}
+      findtime = {{ security_hardening_fail2ban_findtime }}
+      maxretry = {{ security_hardening_fail2ban_maxretry }}
 
       [sshd]
       enabled  = true
-      port     = {{ ssh_port }}
+      port     = {{ security_hardening_ssh_port }}
       logpath  = %(sshd_log)s
       backend  = %(sshd_backend)s
     owner: root
@@ -95,14 +96,14 @@
   ansible.builtin.apt:
     name: ufw
     state: present
-  when: enable_ufw
+  when: security_hardening_enable_ufw
   tags: [hardening, firewall]
 
 - name: Set UFW default inbound policy to deny
   community.general.ufw:
     default: deny
     direction: incoming
-  when: enable_ufw
+  when: security_hardening_enable_ufw
   notify: Reload ufw
   tags: [hardening, firewall]
 
@@ -110,7 +111,7 @@
   community.general.ufw:
     default: allow
     direction: outgoing
-  when: enable_ufw
+  when: security_hardening_enable_ufw
   tags: [hardening, firewall]
 
 - name: Allow permitted inbound ports
@@ -118,13 +119,13 @@
     rule: allow
     port: "{{ item | string }}"
     proto: tcp
-  loop: "{{ allowed_ports }}"
-  when: enable_ufw
+  loop: "{{ security_hardening_allowed_ports }}"
+  when: security_hardening_enable_ufw
   notify: Reload ufw
   tags: [hardening, firewall]
 
 - name: Enable UFW
   community.general.ufw:
     state: enabled
-  when: enable_ufw
+  when: security_hardening_enable_ufw
   tags: [hardening, firewall]

@@ -1,3 +1,4 @@
+---
 # Idempotent user onboarding and offboarding across the fleet.
 
 - name: User provisioning and deprovisioning

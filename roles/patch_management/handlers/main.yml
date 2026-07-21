@@ -1,2 +1,2 @@
-# Handlers are declared here but triggered by other roles (e.g. sshd restart).
+---
 # Patch management has no service handlers — reboots are handled inline.

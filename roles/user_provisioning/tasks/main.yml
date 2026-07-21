@@ -1,3 +1,4 @@
+---
 # User onboarding and offboarding based on vars/users.yml.
 
 - name: Load user definitions
@@ -12,7 +13,7 @@
     name: "{{ item.name }}"
     state: "{{ item.state }}"
     comment: "{{ item.comment | default('') }}"
-    shell: "{{ user_shell }}"
+    shell: "{{ user_provisioning_shell }}"
     create_home: "{{ item.state == 'present' }}"
     remove: "{{ item.state == 'absent' }}"  # Remove home dir on deprovision
   loop: "{{ users }}"
@@ -42,14 +43,14 @@
   loop_control:
     label: "{{ item.name }}"
   # Ignore errors if user account was already removed (home dir gone)
-  ignore_errors: true
+  failed_when: false
   tags: [users, keys]
 
 # Sudo access management
 
 - name: Ensure sudoers drop-in file exists
   ansible.builtin.file:
-    path: "{{ sudoers_dropin_file }}"
+    path: "{{ user_provisioning_sudoers_dropin_file }}"
     state: touch
     owner: root
     group: root
@@ -60,7 +61,7 @@
 
 - name: "Grant sudo access (present users with sudo: true)"
   ansible.builtin.lineinfile:
-    path: "{{ sudoers_dropin_file }}"
+    path: "{{ user_provisioning_sudoers_dropin_file }}"
     regexp: "^{{ item.name }}"
     line: "{{ item.name }} ALL=(ALL) NOPASSWD:ALL"
     state: present
@@ -72,7 +73,7 @@
 
 - name: "Revoke sudo access (absent users or sudo: false)"
   ansible.builtin.lineinfile:
-    path: "{{ sudoers_dropin_file }}"
+    path: "{{ user_provisioning_sudoers_dropin_file }}"
     regexp: "^{{ item.name }}"
     state: absent
     validate: "visudo -cf %s"

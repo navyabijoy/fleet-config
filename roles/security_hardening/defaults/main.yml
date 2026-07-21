@@ -1,20 +1,21 @@
+---
 # CIS Ubuntu 22.04 Benchmark — lightweight baseline (sections 5.2, 5.3)
 
 # SSH settings (CIS 5.2.x)
-ssh_port: 22
-ssh_max_auth_tries: 3
-ssh_client_alive_interval: 300
-ssh_client_alive_count_max: 0
+security_hardening_ssh_port: 22
+security_hardening_ssh_max_auth_tries: 3
+security_hardening_ssh_client_alive_interval: 300
+security_hardening_ssh_client_alive_count_max: 0
 
 # fail2ban (CIS 5.3 intent)
-fail2ban_ssh_maxretry: 5
-fail2ban_ssh_bantime: 3600    # 1 hour in seconds
-fail2ban_ssh_findtime: 600    # 10-minute window
+security_hardening_fail2ban_maxretry: 5
+security_hardening_fail2ban_bantime: 3600 # 1 hour in seconds
+security_hardening_fail2ban_findtime: 600 # 10-minute window
 
 # Firewall — allowed inbound TCP ports (everything else denied)
-allowed_ports:
-  - 22    # SSH
-  - 443   # HTTPS
+security_hardening_allowed_ports:
+  - 22 # SSH
+  - 443 # HTTPS
 
 # Whether to enable UFW (set false if using iptables/nftables directly)
-enable_ufw: true
+security_hardening_enable_ufw: true

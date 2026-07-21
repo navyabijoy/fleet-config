@@ -1,3 +1,4 @@
+---
 # Lightweight CIS Ubuntu 22.04 security baseline.
 
 - name: Security hardening baseline

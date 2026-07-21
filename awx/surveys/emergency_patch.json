@@ -1,0 +1,34 @@
+{
+  "name": "Emergency Patch Survey",
+  "description": "Ad-hoc patch run parameters — used for CVE-driven emergency patches",
+  "spec": [
+    {
+      "question_name": "CVE Reference",
+      "question_description": "Enter the CVE ID (e.g. CVE-2024-12345) triggering this emergency patch. Used for audit logging.",
+      "variable": "cve_id",
+      "type": "text",
+      "required": true,
+      "default": "",
+      "min": 5,
+      "max": 30
+    },
+    {
+      "question_name": "Target Environment",
+      "question_description": "Which environment to patch?",
+      "variable": "target_env",
+      "type": "multiplechoice",
+      "required": true,
+      "default": "staging",
+      "choices": "staging\nprod"
+    },
+    {
+      "question_name": "Skip Reboot Safety Gate",
+      "question_description": "Force reboot even if within business hours? Only use for critical CVEs requiring immediate reboot.",
+      "variable": "skip_reboot",
+      "type": "multiplechoice",
+      "required": true,
+      "default": "false",
+      "choices": "false\ntrue"
+    }
+  ]
+}

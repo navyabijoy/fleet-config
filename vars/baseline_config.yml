@@ -1,3 +1,4 @@
+---
 # Source of truth for config drift detection.
 # The config_drift role compares live host state against these values.
 

@@ -1,3 +1,4 @@
+---
 # Pre-checks
 
 - name: Capture current UTC hour for business-hours gate
@@ -10,8 +11,8 @@
   ansible.builtin.set_fact:
     in_business_hours: >-
       {{
-        (current_utc_hour.stdout | int) >= patch_business_hours_start and
-        (current_utc_hour.stdout | int) < patch_business_hours_end
+        (current_utc_hour.stdout | int) >= patch_management_business_hours_start and
+        (current_utc_hour.stdout | int) < patch_management_business_hours_end
       }}
   tags: [check, patch, reboot]
 
@@ -35,7 +36,7 @@
 - name: Apply all security and regular updates (Debian/Ubuntu)
   ansible.builtin.apt:
     upgrade: dist
-    autoremove: "{{ patch_autoremove }}"
+    autoremove: "{{ patch_management_autoremove }}"
     autoclean: true
   register: apt_result
   when: ansible_os_family == "Debian"
@@ -68,7 +69,7 @@
 
 - name: Write patch log entry
   ansible.builtin.lineinfile:
-    path: "{{ patch_log_file }}"
+    path: "{{ patch_management_log_file }}"
     line: >-
       {{ ansible_date_time.iso8601 }}
       host={{ inventory_hostname }}
@@ -112,7 +113,7 @@
     msg: >-
       DEFERRED: Reboot required on {{ inventory_hostname }} but current
       UTC hour {{ current_utc_hour.stdout }} is within business hours
-      ({{ patch_business_hours_start }}–{{ patch_business_hours_end }}).
+      ({{ patch_management_business_hours_start }}–{{ patch_management_business_hours_end }}).
       Set skip_reboot=true to override.
   when:
     - reboot_required_file.stat.exists | default(false)

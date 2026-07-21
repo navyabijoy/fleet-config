@@ -1,0 +1,86 @@
+# AWX 24.x on Docker Compose — targets EC2 t3.micro (2 GB RAM).
+#
+# Secrets: copy awx/.env.example → awx/.env and fill in values.
+# NEVER commit .env to version control.
+#
+# Quick start:
+#   cp awx/.env.example awx/.env   # edit values
+#   docker compose --env-file awx/.env up -d
+#   docker compose logs -f awx_web | grep -E "AWX is ready|error"
+#   Open http://<EC2_PUBLIC_IP> — login admin / (see AWX_ADMIN_PASSWORD in .env)
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: awx
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: awx
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  awx_web:
+    image: ghcr.io/ansible/awx:24.6.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "80:8052"
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: awx
+      DATABASE_USER: awx
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      AWX_ADMIN_USER: admin
+      AWX_ADMIN_PASSWORD: ${AWX_ADMIN_PASSWORD}
+    volumes:
+      - awx_projects:/var/lib/awx/projects
+    restart: unless-stopped
+    mem_limit: 800m
+
+  awx_task:
+    image: ghcr.io/ansible/awx:24.6.1
+    depends_on:
+      awx_web:
+        condition: service_started
+    command: /usr/bin/launch_awx_task.sh
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: awx
+      DATABASE_USER: awx
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    volumes:
+      - awx_projects:/var/lib/awx/projects
+    restart: unless-stopped
+    mem_limit: 512m
+
+volumes:
+  postgres_data:
+  awx_projects:

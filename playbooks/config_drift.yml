@@ -1,0 +1,14 @@
+---
+- name: Configuration drift detection and correction
+  hosts: staging
+  gather_facts: true
+  become: true
+
+  vars_files:
+    - ../vars/baseline_config.yml
+
+  vars:
+    drift_fix: false  # Override with -e drift_fix=true to remediate
+
+  roles:
+    - role: config_drift

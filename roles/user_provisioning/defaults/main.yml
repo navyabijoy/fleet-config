@@ -1,5 +1,6 @@
+---
 # Shell assigned to provisioned users
-user_shell: /bin/bash
+user_provisioning_shell: /bin/bash
 
 # Sudoers drop-in file for fleet-managed users
-sudoers_dropin_file: /etc/sudoers.d/fleet-users
+user_provisioning_sudoers_dropin_file: /etc/sudoers.d/fleet-users

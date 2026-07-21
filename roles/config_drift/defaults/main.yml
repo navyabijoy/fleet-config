@@ -1,9 +1,10 @@
+---
 # Report mode (default): detect and log drift, fail task to alert AWX.
-# Fix mode: set drift_fix=true via AWX extra vars to auto-remediate.
-drift_fix: false
+# Fix mode: set config_drift_fix=true via AWX extra vars to auto-remediate.
+config_drift_fix: false
 
 # Where to write the drift report on each managed host
-drift_log_file: /var/log/ansible_drift.log
+config_drift_log_file: /var/log/ansible_drift.log
 
 # sshd_config path (Ubuntu 22.04 default)
-sshd_config_path: /etc/ssh/sshd_config
+config_drift_sshd_config_path: /etc/ssh/sshd_config

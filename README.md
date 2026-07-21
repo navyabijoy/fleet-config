@@ -1,6 +1,6 @@
 # fleet-config
 
-![Lint Status](https://github.com/<YOUR_ORG>/fleet-config/actions/workflows/lint.yml/badge.svg)
+![Lint Status](https://github.com/navyabijoy/fleet-config/actions/workflows/lint.yml/badge.svg)
 
 Fleet configuration management and patch automation using Ansible and AWX Tower.  
 Runs entirely on AWS free tier.

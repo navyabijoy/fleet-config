@@ -1,0 +1,13 @@
+# Applies OS package updates across the fleet.
+
+- name: Fleet patch management
+  hosts: staging
+  gather_facts: true
+  become: true
+
+  vars:
+    cve_id: ""
+    skip_reboot: false
+
+  roles:
+    - role: patch_management

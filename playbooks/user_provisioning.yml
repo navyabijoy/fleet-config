@@ -1,0 +1,12 @@
+# Idempotent user onboarding and offboarding across the fleet.
+
+- name: User provisioning and deprovisioning
+  hosts: staging
+  gather_facts: true
+  become: true
+
+  vars_files:
+    - ../vars/users.yml
+
+  roles:
+    - role: user_provisioning

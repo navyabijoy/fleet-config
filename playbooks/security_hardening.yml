@@ -1,0 +1,9 @@
+# Lightweight CIS Ubuntu 22.04 security baseline.
+
+- name: Security hardening baseline
+  hosts: staging
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: security_hardening

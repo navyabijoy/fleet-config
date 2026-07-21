@@ -1,0 +1,25 @@
+# Managed by Ansible fleet-config — DO NOT EDIT MANUALLY
+# Role: config_drift | Template: sshd_config.j2
+# Baseline: vars/baseline_config.yml
+# Any manual edits will be overwritten on next drift remediation run.
+
+Protocol {{ sshd_config.Protocol }}
+LogLevel {{ sshd_config.LogLevel }}
+
+# Authentication
+PermitRootLogin {{ sshd_config.PermitRootLogin }}
+PasswordAuthentication {{ sshd_config.PasswordAuthentication }}
+MaxAuthTries {{ sshd_config.MaxAuthTries }}
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+# Forwarding
+X11Forwarding {{ sshd_config.X11Forwarding }}
+AllowAgentForwarding {{ sshd_config.AllowAgentForwarding }}
+
+# Session timeout
+ClientAliveInterval {{ sshd_config.ClientAliveInterval }}
+ClientAliveCountMax {{ sshd_config.ClientAliveCountMax }}
+
+# Subsystems
+Subsystem sftp /usr/lib/openssh/sftp-server

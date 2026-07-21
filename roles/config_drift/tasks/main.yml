@@ -1,0 +1,152 @@
+# Detects and corrects configuration drift against baselines.
+
+- name: Load baseline config vars
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/../vars/baseline_config.yml"
+  tags: [drift, check]
+
+# sshd_config drift detection
+
+- name: Fetch current sshd_config from host
+  ansible.builtin.slurp:
+    src: "{{ sshd_config_path }}"
+  register: current_sshd_raw
+  tags: [drift, check]
+
+- name: Decode current sshd_config
+  ansible.builtin.set_fact:
+    current_sshd_content: "{{ current_sshd_raw.content | b64decode }}"
+  tags: [drift, check]
+
+- name: Detect sshd_config key drift
+  ansible.builtin.set_fact:
+    sshd_drift_items: >-
+      {{
+        sshd_config | dict2items | selectattr('value', 'string') | list |
+        rejectattr('value', 'in', current_sshd_content) | list
+      }}
+  tags: [drift, check]
+
+- name: Log sshd_config drift to file on host
+  ansible.builtin.lineinfile:
+    path: "{{ drift_log_file }}"
+    line: >-
+      {{ ansible_date_time.iso8601 }}
+      DRIFT sshd_config {{ item.key }}=EXPECTED:{{ item.value }}
+      host={{ inventory_hostname }}
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ sshd_drift_items }}"
+  when: sshd_drift_items | length > 0
+  tags: [drift]
+
+- name: Report sshd_config drift (report mode)
+  ansible.builtin.debug:
+    msg: >-
+      DRIFT DETECTED on {{ inventory_hostname }}:
+      sshd_config has {{ sshd_drift_items | length }} deviation(s):
+      {{ sshd_drift_items | map(attribute='key') | list | join(', ') }}.
+      Run with drift_fix=true to remediate.
+  when:
+    - sshd_drift_items | length > 0
+    - not drift_fix
+  tags: [drift]
+
+- name: Remediate sshd_config (fix mode)
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: "{{ sshd_config_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "sshd -t -f %s"
+    backup: true
+  when:
+    - sshd_drift_items | length > 0
+    - drift_fix
+  notify: Restart sshd
+  tags: [drift]
+
+# sudoers drift detection
+
+- name: Fetch current /etc/sudoers content
+  ansible.builtin.slurp:
+    src: /etc/sudoers
+  register: current_sudoers_raw
+  tags: [drift, check]
+
+- name: Decode sudoers content
+  ansible.builtin.set_fact:
+    current_sudoers_content: "{{ current_sudoers_raw.content | b64decode }}"
+  tags: [drift, check]
+
+- name: Detect missing sudoers baseline entries
+  ansible.builtin.set_fact:
+    sudoers_drift_items: >-
+      {{
+        sudoers_entries |
+        rejectattr('privilege', 'in', current_sudoers_content) | list
+      }}
+  tags: [drift, check]
+
+- name: Log sudoers drift
+  ansible.builtin.lineinfile:
+    path: "{{ drift_log_file }}"
+    line: >-
+      {{ ansible_date_time.iso8601 }}
+      DRIFT sudoers missing_entry={{ item.user }}
+      host={{ inventory_hostname }}
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ sudoers_drift_items }}"
+  when: sudoers_drift_items | length > 0
+  tags: [drift]
+
+- name: Remediate sudoers missing entries (fix mode)
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/fleet-managed
+    line: "{{ item.user }} {{ item.privilege }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  loop: "{{ sudoers_drift_items }}"
+  when:
+    - sudoers_drift_items | length > 0
+    - drift_fix
+  tags: [drift]
+
+# Fail task if drift found and not in fix mode
+
+- name: Collect total drift count
+  ansible.builtin.set_fact:
+    total_drift_count: >-
+      {{ (sshd_drift_items | length) + (sudoers_drift_items | length) }}
+  tags: [drift]
+
+- name: Fail to trigger AWX alert when drift found in report mode
+  ansible.builtin.fail:
+    msg: >-
+      Config drift detected on {{ inventory_hostname }}.
+      Total deviations: {{ total_drift_count }}.
+      Check {{ drift_log_file }} for details. Re-run with drift_fix=true to remediate.
+  when:
+    - total_drift_count | int > 0
+    - not drift_fix
+  tags: [drift]
+
+- name: Log clean state
+  ansible.builtin.lineinfile:
+    path: "{{ drift_log_file }}"
+    line: "{{ ansible_date_time.iso8601 }} CLEAN host={{ inventory_hostname }} checked=sshd_config,sudoers"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  when: total_drift_count | int == 0
+  tags: [drift]
